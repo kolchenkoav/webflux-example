@@ -11,6 +11,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -36,5 +37,24 @@ public class ItemHandler {
                                 new ItemModel(serverRequest.pathVariable("id"),
                                         "Item name 1", 10, Collections.emptyList())),
                         ItemModel.class);
+    }
+
+    public Mono<ServerResponse> createItem(ServerRequest serverRequest) {
+        return serverRequest.bodyToMono(ItemModel.class)
+                .flatMap(item -> {
+                    log.info("Item for create: {}", item);
+                    return Mono.just(item);
+                })
+                .flatMap(item -> ServerResponse.created(URI.create("/api/v1/functions/item/" + item.getId())).build());
+    }
+
+    public Mono<ServerResponse> errorRequest(ServerRequest serverRequest) {
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Mono.error(new RuntimeException("Exception in errorRequest")), String.class)
+                .onErrorResume(ex -> {
+                    log.error("Error in errorRequest", ex);
+                    return ServerResponse.badRequest().body(Mono.error(ex), String.class);
+                });
     }
 }
