@@ -2,9 +2,12 @@ package com.example.webfluxexample.controller;
 
 import com.example.webfluxexample.entity.Item;
 import com.example.webfluxexample.model.ItemModel;
+import com.example.webfluxexample.publisher.ItemUpdatesPublisher;
 import com.example.webfluxexample.service.ItemService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -14,6 +17,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class ItemController {
     private final ItemService itemService;
+    private final ItemUpdatesPublisher publisher;
 
     @GetMapping
     public Flux<ItemModel> getAllItems() {
@@ -40,6 +44,7 @@ public class ItemController {
     public Mono<ResponseEntity<ItemModel>> createItem(@RequestBody ItemModel itemModel) {
         return itemService.save(Item.from(itemModel))
                 .map(ItemModel::from)
+                .doOnSuccess(publisher::publish)
                 .map(ResponseEntity::ok);
     }
 
@@ -55,5 +60,12 @@ public class ItemController {
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> deleteItem(@PathVariable String id) {
         return itemService.deleteById(id).then(Mono.just(ResponseEntity.noContent().build()));
+    }
+
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<ItemModel>> getItemUpdates() {
+        return publisher.getUpdatesSink()
+                .asFlux()
+                .map(item -> ServerSentEvent.builder(item).build());
     }
 }

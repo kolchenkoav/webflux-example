@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collation = "items")
+@Document(collection = "items")
 public class Item {
     @Id
     private String id;
